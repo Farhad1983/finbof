@@ -1,6 +1,7 @@
 from os.path import join
 import pickle
 import numpy as np
+import pandas as pd
 from lob_utils.train_anchored_utils import  get_average_metrics
 
 def print_line(results):
@@ -22,14 +23,42 @@ def print_results(results_path):
     print("--------")
     print(results_path)
     print_line(results1)
+    print(metrics_1)
+    print(metrics_2)
+    print(metrics_3)
     # print_line(results2)
     # print_line(results3)
 
+def print_results_df():
+    model_names = ['final_cnn','final_gru','final_lstm','final_bof']
+    metrics = ['acc_mean','acc_std','precision_mean','precision_std','recall_mean','recall_std','f1_mean','f1_std','kappa_mean','kappa_std']
+    df = pd.DataFrame(columns=metrics, index = model_names)    
+     
+    for model in model_names:
+        path = "{}.pickle".format(model)
+        with open(join("results", path), 'rb') as f:
+            [metrics_1, metrics_2, metrics_3] = pickle.load(f)
+            [results1, results2, results3] = pickle.load(f)
+            acc, precision, recall, f1, kappa = get_average_metrics(results1)
+            df['acc_mean'][model] = np.mean(acc)
+            df['precision_mean'][model] = np.mean(precision)
+            df['recall_mean'][model] = np.mean(recall)
+            df['f1_mean'][model] = np.mean(f1)
+            df['kappa_mean'][model] = np.mean(kappa)
+            
+            df['acc_std'][model] = np.std(acc)
+            df['precision_std'][model] = np.std(precision)
+            df['recall_std'][model] = np.std(recall)
+            df['f1_std'][model] = np.std(f1)
+            df['kappa_std'][model] = np.std(kappa) 
+    print('OK1')
+    df.style.highlight_min( color = 'lightgreen', axis = 0)
+    return df 
 
 
-print_results("final_cnn.pickle")
-print_results("final_gru.pickle")
+#print_results("final_cnn.pickle")
+#print_results("final_gru.pickle")
 # print_results("final_lstm.pickle")
-print_results("final_bof.pickle")
+#print_results("final_bof.pickle")
 
 
