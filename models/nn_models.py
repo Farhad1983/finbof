@@ -137,7 +137,7 @@ class ML_LSTM_NN(nn.Module):
             XX[i], (hn, cn) = self.lstm(XX[i])
             XX[i] = torch.mul(attentionRate[i].repeat([len(x),1,1]).to(self.device), XX[i].to(self.device))
 
-        x= sum(XX[d] for d in self.timeDepthAttentions).to(self.device)
+        x= sum(XX[d] for d in timeDepthAttentions).to(self.device)
         #tsum = total.repeat([len(x),1,1]).to(self.device)
         #x = x.div(tsum).to(self.device)
 
