@@ -6,7 +6,7 @@ import numpy as np
 
 def train_evaluate_anchored(model, epoch_trainer=lob_epoch_trainer, evaluator=lob_evaluator,
                             horizon=0, window=5, batch_size=128, train_epochs=20, verbose=True,
-                            use_resampling=True, learning_rate=0.0001, splits=range(9)):
+                            use_resampling=True, learning_rate=0.0001, splits=range(9), device = 'cuda'):
     """
     Trains and evaluates a model for using an anchored walk-forward setup
     :param model: model to train
@@ -28,7 +28,7 @@ def train_evaluate_anchored(model, epoch_trainer=lob_epoch_trainer, evaluator=lo
         train_loader, test_loader = get_wf_lob_loaders(window=window, horizon=horizon, split=i, batch_size=batch_size,
                                                        class_resample=use_resampling)
         current_model = model()
-        current_model.cuda()
+        current_model.to(device)
         for epoch in range(train_epochs):
             loss = epoch_trainer(model=current_model, loader=train_loader, use_class_weights=(not use_resampling),
                                  lr=learning_rate)

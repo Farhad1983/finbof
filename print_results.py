@@ -30,7 +30,7 @@ def print_results(results_path):
     # print_line(results3)
 
 def print_results_df(printOrginal = False):
-    model_names = ['final_cnn','final_gru','final_lstm','final_bof','final_MLLSTM']
+    model_names = ['final_cnn','final_gru','final_lstm','final_bof','final_MLLSTM','final2_MLLSTM']
     metrics = ['acc_mean','acc_std','precision_mean','precision_std','recall_mean','recall_std','f1_mean','f1_std','kappa_mean','kappa_std']
     df = pd.DataFrame(columns=metrics, index = model_names)    
      

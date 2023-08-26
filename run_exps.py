@@ -4,12 +4,15 @@ from time import time
 import pickle
 from models.nn_models import  GRU_NN, LSTM_NN, CNN_NN, ML_LSTM_NN
 from os.path import join
+import torch
+ 
 
-
-def run_experiments(model, output_path, train_epochs=20, window=10):
+def run_experiments(model, output_path, train_epochs=10, window=10):
 
     a = time()
-    results1 = train_evaluate_anchored(model, window=window, batch_size= 1, train_epochs=train_epochs, horizon=0, splits=range(9))
+    # setting device on GPU if available, else CPU
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    results1 = train_evaluate_anchored(model, window=window, batch_size= 128, train_epochs=train_epochs, horizon=0, splits=range(9), device = device)
     b = time()
 
     print("----------")
@@ -28,14 +31,18 @@ def run_experiments(model, output_path, train_epochs=20, window=10):
 #model = lambda: ConvolutionalTemporalCorrelationBoFAdaptivePyramid(window=15, split_horizon=5, use_scaling=True)
 #run_experiments(model, 'final_bof.pickle', window=15)
 
-model = lambda: GRU_NN()
-run_experiments(model, 'final_gru.pickle', window=15)
+model = lambda: LSTM_NN()
+#run_experiments(model, 'final_MLLSTM.pickle', window=15)
 
 #model = lambda: LSTM_NN()
 #run_experiments(model, 'final_lstm.pickle', window=15)
 
 #model = lambda: CNN_NN()
 #run_experiments(model, 'final_cnn.pickle', window=15)
+
+ 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('device: ', device)
 
 
 

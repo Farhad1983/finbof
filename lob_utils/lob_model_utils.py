@@ -10,10 +10,11 @@ from sklearn.metrics import precision_recall_fscore_support, cohen_kappa_score
 def epoch_trainer(model, loader, lr=0.001, optimizer=optim.Adam, use_class_weights=False):
     model.train()
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_optimizer = optimizer(model.parameters(), lr=lr)
     if use_class_weights:
         weight = np.float32([1, 0.05, 1])
-        weight = Variable(torch.from_numpy(weight).cuda())
+        weight = Variable(torch.from_numpy(weight).to(device))
         criterion = CrossEntropyLoss()
     else:
         criterion = CrossEntropyLoss()
@@ -25,11 +26,11 @@ def epoch_trainer(model, loader, lr=0.001, optimizer=optim.Adam, use_class_weigh
         model_optimizer.zero_grad()
 
         # Get the data
-        inputs, targets = Variable(inputs.cuda()), Variable(targets.cuda())
+        inputs, targets = Variable(inputs.to(device)), Variable(targets.to(device))
         targets = torch.squeeze(targets)
 
         # Feed forward the network and update
-        outputs = model(inputs)
+        outputs = model(inputs).to(device)
         loss = criterion(outputs, targets)
 
         loss.backward()
