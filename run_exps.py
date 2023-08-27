@@ -1,3 +1,4 @@
+import os
 from models.bof_models import ConvolutionalTemporalCorrelationBoFAdaptivePyramid
 from lob_utils.train_anchored_utils import train_evaluate_anchored, get_average_metrics
 from time import time
@@ -7,12 +8,12 @@ from os.path import join
 import torch
  
 
-def run_experiments(model, output_path, train_epochs=10, window=10):
+def run_experiments(model, output_path, train_epochs=20, window=10):
 
     a = time()
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    results1 = train_evaluate_anchored(model, window=window, batch_size= 128, train_epochs=train_epochs, horizon=0, splits=range(9), device = device)
+    results1 = train_evaluate_anchored(model, window=window, batch_size= 9, train_epochs=train_epochs, horizon=0, splits=range(9), device = device)
     b = time()
 
     print("----------")
@@ -25,13 +26,15 @@ def run_experiments(model, output_path, train_epochs=10, window=10):
         pickle.dump([metrics_1, metrics_1, metrics_1], f)
         pickle.dump([results1, results1, results1], f)
 
+    #os.system("shutdown /s /t 1")
+
 
 # Experiments!
 
 #model = lambda: ConvolutionalTemporalCorrelationBoFAdaptivePyramid(window=15, split_horizon=5, use_scaling=True)
 #run_experiments(model, 'final_bof.pickle', window=15)
 
-model = lambda: LSTM_NN()
+#model = lambda: LSTM_NN()
 #run_experiments(model, 'final_MLLSTM.pickle', window=15)
 
 #model = lambda: LSTM_NN()

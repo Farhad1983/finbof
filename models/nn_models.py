@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 class GRU_NN(nn.Module):
@@ -92,14 +93,15 @@ class CNN_NN(nn.Module):
 
 class ML_LSTM_NN(nn.Module):
 
-    def __init__(self, n_gru_hidden=144):
+    def __init__(self, n_gru_hidden=256):
         super(ML_LSTM_NN, self).__init__()
 
         self.n_gru_hidden = n_gru_hidden
         self.fc1 = nn.Linear(self.n_gru_hidden, 512)
         self.fc2 = nn.Linear(512, 3)
+        self.fc3 = nn.Linear(512, 3)
         #self.timeDepthAttentions = [3,5,10,15]
-        self.window_size = 15 
+        #self.window_size = Variable(15 )
 
         self.lstm = nn.LSTM(input_size=144, hidden_size=n_gru_hidden, num_layers=1)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -123,19 +125,25 @@ class ML_LSTM_NN(nn.Module):
         return result, attentionDepth, attentionRate
     
     def forward(self, x):
+        ln = len(x)
+        x = x.transpose(0, 1)
         timeDepthAttentions =  [3,5,10,15]
         total, attentionDepth, attentionRate = self.getBreakDowns(15, timeDepthAttentions)
+        total1, attentionDepth1, attentionRate1 = self.getBreakDowns(15, timeDepthAttentions, self.n_gru_hidden)
 
         #attentionDepth = attentionDepth.to(self.device)
         #attentionRate = attentionRate.to(self.device)
         total = total.to(self.device)
-        #print('x Shape is : ',len(x))
+        #print('x Shape is : ',x.shape)
 
         XX = dict([])
         for i in timeDepthAttentions:
-            XX[i] = torch.mul(attentionDepth[i].repeat([len(x),1,1]).to(self.device), x.to(self.device))
+            #print('x Shape is 1 : ',attentionDepth[i].repeat([ln ,1,1]).shape)
+            #print('x Shape is 2 : ',attentionDepth[i].repeat([ln ,1,1]).transpose(0, 1))
+            #print('x Shape is 3 : ',attentionDepth[i].repeat([ln ,1,1]).transpose(0, 1).shape)
+            XX[i] = torch.mul(attentionDepth[i].repeat([ln ,1,1]).transpose(0, 1).to(self.device), x.to(self.device))
             XX[i], (hn, cn) = self.lstm(XX[i])
-            XX[i] = torch.mul(attentionRate[i].repeat([len(x),1,1]).to(self.device), XX[i].to(self.device))
+            XX[i] = torch.mul(attentionRate1[i].repeat([ln ,1,1]).transpose(0, 1).to(self.device), XX[i].to(self.device))
 
         x= sum(XX[d] for d in timeDepthAttentions).to(self.device)
         #tsum = total.repeat([len(x),1,1]).to(self.device)
@@ -144,7 +152,7 @@ class ML_LSTM_NN(nn.Module):
         #x = x.unsqueeze(0)
        
         #x = x[-1].squeeze()
-        x = x.transpose(0, 1)
+        
         x = x[-1].squeeze()
         #print('x Shape is : ',x.shape)
         
