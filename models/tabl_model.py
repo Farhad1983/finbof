@@ -8,20 +8,20 @@ class TABL_Layer(nn.Module):
         super().__init__()
         self.t1 = t1
 
-        weight = torch.Tensor(d2, d1)
-        self.W1 = nn.Parameter(weight)
+        weight1 = torch.Tensor(d2, d1)
+        self.W1 = nn.Parameter(weight1)
         nn.init.kaiming_uniform_(self.W1, nonlinearity='relu')
         
-        weight2 = torch.Tensor(t1, t1)
-        self.W = nn.Parameter(weight2)
+        weight = torch.Tensor(t1, t1)
+        self.W = nn.Parameter(weight)
         nn.init.constant_(self.W, 1/t1)
  
-        weight3 = torch.Tensor(t1, t2)
-        self.W2 = nn.Parameter(weight3)
+        weight2 = torch.Tensor(t1, t2)
+        self.W2 = nn.Parameter(weight2)
         nn.init.kaiming_uniform_(self.W2, nonlinearity='relu')
 
-        bias1 = torch.Tensor(d2, t2)
-        self.B = nn.Parameter(bias1)
+        bias = torch.Tensor(d2, t2)
+        self.B = nn.Parameter(bias)
         nn.init.constant_(self.B, 0)
 
         l = torch.Tensor(1,)
@@ -29,9 +29,11 @@ class TABL_Layer(nn.Module):
         nn.init.constant_(self.l, 0.5)
 
         self.activation = nn.ReLU()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, X):
         
+        #x = x.transpose(0, 1)
         #maintaining the weight parameter between 0 and 1.
         if (self.l[0] < 0): 
           l = torch.Tensor(1,)
@@ -47,7 +49,7 @@ class TABL_Layer(nn.Module):
         X = self.W1 @ X
 
         #enforcing constant (1) on the diagonal
-        W = self.W -self.W *torch.eye(self.t1,dtype=torch.float32).to(device)+torch.eye(self.t1,dtype=torch.float32).to(device)/self.t1
+        W = self.W -self.W *torch.eye(self.t1,dtype=torch.float32).to(self.device )+torch.eye(self.t1,dtype=torch.float32).to(self.device )/self.t1
 
         #attention, the aim of the second step is to learn how important the temporal instances are to each other (8)
         E = X @ W
@@ -57,7 +59,7 @@ class TABL_Layer(nn.Module):
 
         #applying a soft attention mechanism  (10)
         #he attention mask A obtained from the third step is used to zero out the effect of unimportant elements
-        X = self.l[0] * (X) + (1.0 - self.l[0])*X*A
+        X = self.l[0] * (X) * A + (1.0 - self.l[0]) * X
 
         #the final step of the proposed layer estimates the temporal mapping W2, after the bias shift (11)
         y = X @ self.W2 + self.B
@@ -106,10 +108,14 @@ class CTABL(nn.Module):
     self.dropout = nn.Dropout(0.1)
 
   def forward(self, x):
- 
+    x = x.transpose(1, 2)
+    #print('x:', x.shape)
     self.max_norm_(self.BL.W1.data)
+    #print('x2:', x.shape)
     self.max_norm_(self.BL.W2.data)
+    #print('x3:', x.shape)
     x = self.BL(x)
+    #print('x4:', x.shape)
     x = self.dropout(x)
 
     self.max_norm_(self.BL2.W1.data)
@@ -117,10 +123,126 @@ class CTABL(nn.Module):
     x = self.BL2(x)
     x = self.dropout(x)
 
+    #print('x5:', x.shape)
     self.max_norm_(self.TABL.W1.data)
     self.max_norm_(self.TABL.W.data)
     self.max_norm_(self.TABL.W2.data)
     x = self.TABL(x)
+    #print('x6:', x.shape)
+    
     x = torch.squeeze(x)
     x = torch.softmax(x, 1)
     return x
+  def max_norm_(self, w):
+    with torch.no_grad():
+      if (torch.linalg.matrix_norm(w) > 10.0):
+        norm = torch.linalg.matrix_norm(w)
+        desired = torch.clamp(norm, min=0.0, max=10.0)
+        w *= (desired / (1e-8 + norm))
+
+
+class MT_CTABL(nn.Module):
+  def __init__(self, d2, d1, t1, t2, d3, t3, d4, t4):
+    super().__init__()
+    
+    self.BL = BL_layer(d2, d1, t1, t2)
+    self.BL2 = BL_layer(d3, d2, t2, t3)
+    self.TABL = TABL_Layer(d4, d3, t3, t4)
+    self.dropout = nn.Dropout(0.1)
+
+    self.timeDepthAttentions = [5,10,25,50]
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    #self.timeDepthAttentions = nn.ParameterList(paramList)
+    self.attentionDepth = nn.ParameterDict()
+    self.attentionRate = nn.ParameterDict()
+
+    self.attentionDepth1 = nn.ParameterDict()
+    self.attentionRate1 = nn.ParameterDict()
+
+    self.attentionDepth, self.attentionRate = self.getBreakDowns(50, self.timeDepthAttentions, 144)
+    self.attentionDepth1, self.attentionRate1 = self.getBreakDowns1(50, self.timeDepthAttentions, n_conv)
+
+  def forward(self, x):
+    ln = len(x)
+    x = x.transpose(1, 2)
+
+
+    XX = dict([])
+    for i in self.timeDepthAttentions:
+        #print('x Shape is 1 : ',attentionDepth[i].repeat([ln ,1,1]).shape)
+        #print('x Shape is 2 : ',attentionDepth[i].repeat([ln ,1,1]).transpose(0, 1))
+        #print('x Shape is 3 : ',attentionDepth[i].repeat([ln ,1,1]).transpose(0, 1).shape)
+        XX[i] = torch.mul(self.attentionDepth[str(i)].repeat([ln ,1,1]).transpose(0, 1).to(self.device), x.to(self.device))
+        XX[i], (hn, cn) = self.lstm(XX[i])
+
+
+        #print('x:', x.shape)
+        self.max_norm_(self.BL.W1.data)
+        #print('x2:', x.shape)
+        self.max_norm_(self.BL.W2.data)
+        #print('x3:', x.shape)
+        x = self.BL(XX[i])
+        #print('x4:', x.shape)
+        x = self.dropout(XX[i])
+
+        self.max_norm_(self.BL2.W1.data)
+        self.max_norm_(self.BL2.W2.data)
+        x = self.BL2(XX[i])
+        x = self.dropout(XX[i])
+
+        #print('x5:', x.shape)
+        self.max_norm_(self.TABL.W1.data)
+        self.max_norm_(self.TABL.W.data)
+        self.max_norm_(self.TABL.W2.data)
+        x = self.TABL(XX[i])
+        
+        XX[i] = torch.mul(self.attentionRate1[str(i)].repeat([ln ,1,1]).transpose(0, 1).to(self.device), XX[i].to(self.device))
+    #print('x6:', x.shape)
+    x= sum(XX[d] for d in self.timeDepthAttentions).to(self.device)
+
+    x = torch.squeeze(x)
+    x = torch.softmax(x, 1)
+    return x
+  
+
+  def max_norm_(self, w):
+    with torch.no_grad():
+      if (torch.linalg.matrix_norm(w) > 10.0):
+        norm = torch.linalg.matrix_norm(w)
+        desired = torch.clamp(norm, min=0.0, max=10.0)
+        w *= (desired / (1e-8 + norm))
+
+  def getBreakDowns(self, window_size, steps , future_dimention = 144):
+        if not str(window_size) in steps : steps.append(window_size)
+        #attentionDepth = dict([])
+        #attentionRate = dict([])
+        result = torch.zeros(window_size,future_dimention)
+        for i in steps:
+            p1 = torch.ones( i,future_dimention)
+            p2 = torch.zeros( window_size-i,future_dimention)
+            p3 = torch.cat((p1, p2))
+            self.attentionDepth[str(i)] = p3
+            result = result + p3 
+
+        for i in steps:
+            self.attentionRate[str(i)] = self.attentionDepth[str(i)].div(result)
+        #print(result)
+        return self.attentionDepth, self.attentionRate
+
+  def getBreakDowns1(self, window_size, steps , future_dimention = 144):
+      if not str(window_size) in steps : steps.append(window_size)
+      #attentionDepth = dict([])
+      #attentionRate = dict([])
+      result = torch.zeros(window_size,future_dimention)
+      for i in steps:
+          p1 = torch.ones( i,future_dimention)
+          p2 = torch.zeros( window_size-i,future_dimention)
+          p3 = torch.cat((p1, p2))
+          self.attentionDepth1[str(i)] = p3
+          result = result + p3 
+
+      for i in steps:
+          self.attentionRate1[str(i)] = self.attentionDepth1[str(i)].div(result)
+      #print(result)
+      return self.attentionDepth1, self.attentionRate1

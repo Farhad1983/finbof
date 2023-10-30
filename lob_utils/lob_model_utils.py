@@ -11,7 +11,9 @@ def epoch_trainer(model, loader, lr=0.001, optimizer=optim.Adam, use_class_weigh
     model.train()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_optimizer = optimizer(model.parameters(), lr=lr)
+    model_optimizer = optimizer(model.parameters(), lr=lr, weight_decay= 1e-4)
+    scheduler = optim.lr_scheduler.ExponentialLR(model_optimizer, gamma=0.9)
+    
     if use_class_weights:
         weight = np.float32([1, 0.05, 1])
         weight = Variable(torch.from_numpy(weight).to(device))
@@ -32,6 +34,7 @@ def epoch_trainer(model, loader, lr=0.001, optimizer=optim.Adam, use_class_weigh
         # Feed forward the network and update
         outputs = model(inputs).to(device)
         loss = criterion(outputs, targets)
+        #print('-- loss: ',loss)
 
         loss.backward()
         model_optimizer.step()
@@ -39,8 +42,8 @@ def epoch_trainer(model, loader, lr=0.001, optimizer=optim.Adam, use_class_weigh
         # Calculate statistics
         train_loss += loss.item()
         counter += inputs.size(0)
-
-    loss = (loss / counter).cpu().data.numpy()
+    scheduler.step()
+    #loss = (loss / counter).cpu().data.numpy()
     return loss
 
 

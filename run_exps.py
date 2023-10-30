@@ -4,6 +4,8 @@ from lob_utils.train_anchored_utils import train_evaluate_anchored, get_average_
 from time import time
 import pickle
 from models.nn_models import  GRU_NN, LSTM_NN, CNN_NN, ML_LSTM_NN, ML_CNN_NN
+from models.tabl_model import TABL_Layer, BTABL, CTABL, BL_layer
+from models.BL import  BL_layer
 from os.path import join
 import torch
  
@@ -13,6 +15,7 @@ def run_experiments(model, output_path, train_epochs=20, window=10):
     a = time()
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print( 'device: ', device)
     results1 = train_evaluate_anchored(model, window=window, batch_size= 128, train_epochs=train_epochs, horizon=0, splits=range(9), device = device)
     b = time()
 
