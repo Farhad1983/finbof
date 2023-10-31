@@ -38,6 +38,7 @@ def print_results_df(printOrginal = False, model_name = '', windowSize = 15):
     lstm50 = ['final_lstm_50','final_MLLSTM_50']
     cnn = ['final_cnn','ML_CNN_NN']
     cnn50 = ['final_cnn_50','ML_CNN_NN_50']
+    tabl = ['final_CTABL1','final_MTCTABL1']
 
 
     if(model_name == 'bof'):
@@ -48,6 +49,9 @@ def print_results_df(printOrginal = False, model_name = '', windowSize = 15):
 
     if(model_name == 'cnn'):
       model_names = cnn if windowSize == 15 else cnn50 
+
+    if(model_name == 'tabl'):
+      model_names = tabl if windowSize == 15 else tabl 
 
     metrics = ['acc_mean','acc_std','precision_mean','precision_std','recall_mean','recall_std','f1_mean','f1_std','kappa_mean','kappa_std']
     df = pd.DataFrame(columns=metrics, index = model_names)    
