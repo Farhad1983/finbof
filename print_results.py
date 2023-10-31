@@ -76,3 +76,50 @@ def print_results_df(printOrginal = False, model_name = '', windowSize = 15):
  
 
 
+def plot_results(printOrginal = False, model_name = '', windowSize = 15):
+    
+    model_names = ['final_cnn','ML_CNN_NN','final_lstm','final_MLLSTM','final_bof','final_MLbof']
+    bof15 = ['final_bof','final_MLbof']
+    bof50 = ['final_bof','final_MLbof']
+    lstm = ['final_lstm','final_MLLSTM']
+    lstm50 = ['final_lstm_50','final_MLLSTM_50']
+    cnn = ['final_cnn','ML_CNN_NN']
+    cnn50 = ['final_cnn_50','ML_CNN_NN_50']
+
+
+    if(model_name == 'bof'):
+      model_names = bof15 if windowSize == 15 else bof50
+
+    if(model_name == 'lstm'):
+      model_names = lstm if windowSize == 15 else lstm50
+
+    if(model_name == 'cnn'):
+      model_names = cnn if windowSize == 15 else cnn50 
+
+    metrics = ['acc_mean','acc_std','precision_mean','precision_std','recall_mean','recall_std','f1_mean','f1_std','kappa_mean','kappa_std']
+    df = pd.DataFrame(columns=metrics, index = model_names)    
+     
+    for model in model_names:
+        path = "{}.pickle".format(model)
+        if(printOrginal):
+          path = "orginal/{}.pickle".format(model)
+        if (exists(join("results", path))):
+          with open(join("results", path), 'rb') as f:
+              [metrics_1, metrics_2, metrics_3] = pickle.load(f)
+              [results1, results2, results3] = pickle.load(f)
+              acc, precision, recall, f1, kappa = get_average_metrics(results1)
+              print('------------------------------------------------------------')
+              print('-----   ', model)
+              print('------------------------------------------------------------')
+              print('acc: ', acc) 
+              print('precision: ', precision) 
+              print('recall: ', recall) 
+              print('f1: ', f1) 
+              print('kappa: ', kappa) 
+              print('------------------------------------------------------------')
+              print(metrics_1) 
+
+    return df #.style.highlight_max( subset= ['acc_mean','acc_std','precision_mean','precision_std','recall_mean','recall_std'], color = 'lightgreen', axis = 0).highlight_max(subset= ['f1_mean','f1_std','kappa_mean','kappa_std'], color = 'yellow', axis = 0)
+ 
+
+
